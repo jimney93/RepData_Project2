@@ -11,7 +11,7 @@ An effort is made to use the best available information but due to time and reso
 * [Storm Data FAQ Page](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)  
 * [National Weather Service Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)  
 
-## Data Proc
+## Data Processing
 
 ```{r download and unzip data}
 url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
@@ -26,18 +26,30 @@ library(dplyr)
 
 df <- summarize(stormData %>% group_by(EVTYPE),  FATALITIES = sum(FATALITIES))
 
-top_10_health <- head(df[with(df, order(-FATALITIES)),], 10)
+top_10_fatalities <- head(df[with(df, order(-FATALITIES)),], 10)
 
-ggplot(data=top_10_health, aes(x = EVTYPE, y = FATALITIES)) + 
+ggplot(data=top_10_fatalities, aes(x = EVTYPE, y = FATALITIES)) + 
+  ggtitle("Top 10 Storm Related Fatalities") +
   geom_bar(position="dodge", stat="identity") + 
   coord_flip() + 
   scale_fill_grey() + 
-  theme_bw()
+  theme_bw() +
+  theme(axis.title.y=element_blank())
 
-```
-#ggplot(df, aes(fatalities, group = EVTYPE, color = factor(EVTYPE))) + geom_line(size = 1)
-              
-              
+df <- summarize(stormData %>% group_by(EVTYPE),  INJURIES = sum(INJURIES))
+
+top_10_injuries <- head(df[with(df, order(-INJURIES)),], 10)
+
+ggplot(data=top_10_injuries, aes(x = EVTYPE, y = INJURIES)) + 
+  ggtitle("Top 10 Storm Related Injuries") +
+  geom_bar(position="dodge", stat="identity") + 
+  coord_flip() + 
+  scale_fill_grey() + 
+  theme_bw() +
+  theme(axis.title.y=element_blank())
+
+```  
+
 ### Get top health related costs
 ## Results
 
