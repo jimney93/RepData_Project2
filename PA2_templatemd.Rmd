@@ -1,0 +1,51 @@
+---
+title: "NOAA Storm Data Analysis - Effects on Public Health and Commerce"
+output: html_document
+---
+
+## Synopsis
+The National Climatic Data Center(NCDC) regularly receives Storm Data from the National Weather Service(NWS).  The National Weather Service receives their information from a variety of sources, which include but are not limited to: county, state and federal emergency management officials, local law enforcement officials, skywarn spotters, NWS damage surveys, newspaper clipping services, the insurance industry and the general public.
+
+An effort is made to use the best available information but due to time and resource constraints the information may be unverified by the NWS; therefore, the accuracy or validity of the information is not guaranteed.
+
+* [Storm Data FAQ Page](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)  
+* [National Weather Service Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)  
+
+## Data Proc
+
+```{r download and unzip data}
+url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+download.file(url, destfile = "repdata%2Fdata%2FStormData.csv.bz2", method = "curl")
+stormData <- read.csv("repdata%2Fdata%2FStormData.csv.bz2")
+```
+
+```{r Data Processing, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(plyr)
+library(dplyr)
+
+df <- summarize(stormData %>% group_by(EVTYPE),  FATALITIES = sum(FATALITIES))
+
+top_10_health <- head(df[with(df, order(-FATALITIES)),], 10)
+
+ggplot(data=top_10_health, aes(x = EVTYPE, y = FATALITIES)) + 
+  geom_bar(position="dodge", stat="identity") + 
+  coord_flip() + 
+  scale_fill_grey() + 
+  theme_bw()
+
+```
+#ggplot(df, aes(fatalities, group = EVTYPE, color = factor(EVTYPE))) + geom_line(size = 1)
+              
+              
+### Get top health related costs
+## Results
+
+
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
