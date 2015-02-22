@@ -12,52 +12,65 @@ An effort is made to use the best available information but due to time and reso
 * [National Weather Service Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)  
 
 ## Data Processing
-
 ```{r download and unzip data}
 url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
 download.file(url, destfile = "repdata%2Fdata%2FStormData.csv.bz2", method = "curl")
 stormData <- read.csv("repdata%2Fdata%2FStormData.csv.bz2")
 ```
-
+### Load libraries
 ```{r Data Processing, message=FALSE, warning=FALSE}
 library(ggplot2)
 library(plyr)
 library(dplyr)
 
+### What events are most harmful with respect to population health
+* summarize stormData grouping by the event type and summing fatalities
+* plot the events that are responsible for the top 10 causes of death
 df <- summarize(stormData %>% group_by(EVTYPE),  FATALITIES = sum(FATALITIES))
-
 top_10_fatalities <- head(df[with(df, order(-FATALITIES)),], 10)
-
 ggplot(data=top_10_fatalities, aes(x = EVTYPE, y = FATALITIES)) + 
-  ggtitle("Top 10 Storm Related Fatalities") +
-  geom_bar(position="dodge", stat="identity") + 
-  coord_flip() + 
-  scale_fill_grey() + 
-  theme_bw() +
-  theme(axis.title.y=element_blank())
+    ggtitle("Top 10 Storm Related Fatalities") +
+    geom_bar(position="dodge", stat="identity") + 
+    coord_flip() + 
+    scale_fill_grey() + 
+    theme_bw() +
+    theme(axis.title.y=element_blank())
 
+* summarize stormData grouping by the event type and summing injuries
+* plot the events that are responsible for the top 10 causes of injury
 df <- summarize(stormData %>% group_by(EVTYPE),  INJURIES = sum(INJURIES))
+top_10_injuries <- head(df[with(df, order(-INJURIES)),], 10)
+ggplot(data=top_10_injuries, aes(x = EVTYPE, y = INJURIES)) + 
+    ggtitle("Top 10 Storm Related Injuries") +
+    geom_bar(position="dodge", stat="identity") + 
+    coord_flip() + 
+    scale_fill_grey() + 
+    theme_bw() +
+    theme(axis.title.y=element_blank()) 
 
+### What types of events have the greatest economic consequences
+*   filter stormData for PROPDMG and CROPDMG 
+*   summarizing by event to combine damage contributions from property and crops
+*   generate a top 10 list
+*   summarize results grouping by the event type and summing injuries
+*   plot the events that are responsible for the top 10 causes of injury
+stormData_DMG <- select(stormData, EVTYPE, PROPDMG, CROPDMG)
+stormData_DMG_Event <- summarize(group_by(EVTYPE), 
+                            PROPDMG=sum(PROPDMG), 
+                            CROPDMG=sum(CROPDMG))
+stormData_DMG_Event$TOTALDMG <- stormData_DMG_Event$PROPDMG + stormData_DMG_Event$CROPDMG 
+top_10_DMG <- head(stormData_DMG_Event[with(stormData_DMG_Event, order(-TOTALDMG)),], 10)
 top_10_injuries <- head(df[with(df, order(-INJURIES)),], 10)
 
-ggplot(data=top_10_injuries, aes(x = EVTYPE, y = INJURIES)) + 
-  ggtitle("Top 10 Storm Related Injuries") +
-  geom_bar(position="dodge", stat="identity") + 
-  coord_flip() + 
-  scale_fill_grey() + 
-  theme_bw() +
-  theme(axis.title.y=element_blank())
-
-```  
-
-### Get top health related costs
-## Results
+#ggplot(data=top_10_injuries, aes(x = EVTYPE, y = INJURIES)) + 
+    ggtitle("Top 10 Storm Related Injuries") +
+    geom_bar(position="dodge", stat="identity") + 
+    coord_flip() + 
+    scale_fill_grey() + 
+    theme_bw() +
+    theme(axis.title.y=element_blank())
 
 
 
-You can also embed plots, for example:
-
-```{r, echo=FALSE}
 ```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Results
