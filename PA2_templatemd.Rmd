@@ -8,69 +8,159 @@ The National Climatic Data Center(NCDC) regularly receives Storm Data from the N
 
 An effort is made to use the best available information but due to time and resource constraints the information may be unverified by the NWS; therefore, the accuracy or validity of the information is not guaranteed.
 
+This analysis will address the following questions:
+1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+2. Across the United States, which types of events have the greatest economic consequences?
+
 * [Storm Data FAQ Page](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)  
 * [National Weather Service Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)  
 
 ## Data Processing
-```{r download and unzip data}
+
+```{r}
+#   Download data
+#   Convert column names to lower case
+#   Convert events (evtype) to lower case
+
 url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
 download.file(url, destfile = "repdata%2Fdata%2FStormData.csv.bz2", method = "curl")
 stormData <- read.csv("repdata%2Fdata%2FStormData.csv.bz2")
+names(stormData) <- tolower(names(stormData))
+stormData$evtype <- tolower(stormData$evtype)
 ```
+
 ### Load libraries
+
 ```{r Data Processing, message=FALSE, warning=FALSE}
 library(ggplot2)
 library(plyr)
 library(dplyr)
+library(reshape2)
+```
 
 ### What events are most harmful with respect to population health
-* summarize stormData grouping by the event type and summing fatalities
-* plot the events that are responsible for the top 10 causes of death
-df <- summarize(stormData %>% group_by(EVTYPE),  FATALITIES = sum(FATALITIES))
-top_10_fatalities <- head(df[with(df, order(-FATALITIES)),], 10)
-ggplot(data=top_10_fatalities, aes(x = EVTYPE, y = FATALITIES)) + 
+#### Fatalities
+
+```{r storm events causing fatalities, message=FALSE, warning=FALSE}
+#   summarize stormData grouping by the event type and summing fatalities
+#   plot the events that are responsible for the top 10 causes of death
+
+dfFatalities <- summarize(stormData %>% group_by(evtype),  
+                          fatalities = sum(fatalities))
+top_10_fatalities <- head(dfFatalities[with(dfFatalities, 
+                                            order(-fatalities)),], 10)
+
+```
+
+#### Injuries
+
+```{r storm events causing injuries, message=FALSE, warning=FALSE}
+#   summarize stormData grouping by the event type and summing injuries
+#   plot the events that are responsible for the top 10 causes of injury
+
+dfInjuries <- summarize(stormData %>% group_by(evtype),  injuries = sum(injuries))
+top_10_injuries <- head(dfInjuries[with(dfInjuries, order(-injuries)),], 10)
+
+```
+
+### What types of events have the greatest economic consequences
+
+
+
+```{r}
+# function designed to convert exponential codes into numeric values
+# codes not found in documentation added
+exponent_translate <- function(exp) {
+    # k -> thousand, m -> million, b -> billion
+    if (exp %in% c('k', 'K'))
+        return(3)
+    else if (exp %in% c('m', 'M'))
+        return(6)
+    else if (exp %in% c('b', 'B'))
+        return(9)
+    else if (!is.na(as.numeric(exp))) # if a digit
+        return(as.numeric(exp))
+    else if (exp %in% c('', '-', '?', '+'))
+        return(0)
+    #else {
+    #    stop("Invalid exponent value.")
+    #}
+}
+```
+
+```{r storm events with greatest economic consequences}
+#   filter stormData for propdmg, propdmgexp, cropdmg, cropdmgexp 
+#   translate the propdmgexp and cropdmgexp, applied to property and crop damages 
+#   summarizing by event 
+#   divide costs by 1,000,000
+#   add column totaldmg representing contributions from property and crop damages
+#   summarize results grouping by the event type 
+#   generate a top 10 event list based on totaldmg
+#   reshape into tidy data set
+#   plot the events that are responsible for the top 10 causes of injury
+
+stormData_DMG <- select(stormData, evtype, propdmg, cropdmg, propdmgexp, cropdmgexp)
+
+prop_dmg_exp <- sapply(stormData_DMG$propdmgexp, FUN=exponent_translate)
+stormData_DMG$propdmg <- stormData_DMG$propdmg * (10 ** prop_dmg_exp)
+
+crop_dmg_exp <- sapply(stormData_DMG$cropdmgexp, FUN=exponent_translate)
+stormData_DMG$cropdmg <- stormData_DMG$cropdmg * (10 ** crop_dmg_exp)
+
+stormData_DMG_Event <- summarize(stormData_DMG %>% group_by(evtype), 
+                            propdmg=sum(propdmg), cropdmg=sum(cropdmg))
+stormData_DMG_Event$propdmg <- stormData_DMG_Event$propdmg / 1000000
+stormData_DMG_Event$cropdmg <- stormData_DMG_Event$cropdmg / 1000000
+
+stormData_DMG_Event$totaldmg <- stormData_DMG_Event$propdmg + stormData_DMG_Event$cropdmg 
+
+top_10_DMG_Event <- head(stormData_DMG_Event[with(stormData_DMG_Event, order(-totaldmg)),], 10)
+
+tidy_top_10 <- melt(top_10_DMG_Event, id.vars = "evtype", variable.name = "damage")
+
+```
+
+## Results
+```
+1. Across the United States, which types of events are most harmful with respect to population health?
+    -Top 10 storm events resulting in fatalities
+```
+```{r}
+ggplot(data=top_10_fatalities, aes(x = evtype, y = fatalities)) + 
     ggtitle("Top 10 Storm Related Fatalities") +
     geom_bar(position="dodge", stat="identity") + 
     coord_flip() + 
     scale_fill_grey() + 
     theme_bw() +
     theme(axis.title.y=element_blank())
-
-* summarize stormData grouping by the event type and summing injuries
-* plot the events that are responsible for the top 10 causes of injury
-df <- summarize(stormData %>% group_by(EVTYPE),  INJURIES = sum(INJURIES))
-top_10_injuries <- head(df[with(df, order(-INJURIES)),], 10)
-ggplot(data=top_10_injuries, aes(x = EVTYPE, y = INJURIES)) + 
+```
+```
+1. Across the United States, which types of events are most harmful with respect to population health?
+    -Top 10 storm events resulting in injuries
+```
+```{r}
+ggplot(data=top_10_injuries, aes(x = evtype, y = injuries)) + 
     ggtitle("Top 10 Storm Related Injuries") +
     geom_bar(position="dodge", stat="identity") + 
     coord_flip() + 
     scale_fill_grey() + 
     theme_bw() +
     theme(axis.title.y=element_blank()) 
-
-### What types of events have the greatest economic consequences
-*   filter stormData for PROPDMG and CROPDMG 
-*   summarizing by event to combine damage contributions from property and crops
-*   generate a top 10 list
-*   summarize results grouping by the event type and summing injuries
-*   plot the events that are responsible for the top 10 causes of injury
-stormData_DMG <- select(stormData, EVTYPE, PROPDMG, CROPDMG)
-stormData_DMG_Event <- summarize(group_by(EVTYPE), 
-                            PROPDMG=sum(PROPDMG), 
-                            CROPDMG=sum(CROPDMG))
-stormData_DMG_Event$TOTALDMG <- stormData_DMG_Event$PROPDMG + stormData_DMG_Event$CROPDMG 
-top_10_DMG <- head(stormData_DMG_Event[with(stormData_DMG_Event, order(-TOTALDMG)),], 10)
-top_10_injuries <- head(df[with(df, order(-INJURIES)),], 10)
-
-#ggplot(data=top_10_injuries, aes(x = EVTYPE, y = INJURIES)) + 
-    ggtitle("Top 10 Storm Related Injuries") +
+```
+```
+2. Across the United States, which types of events have the greatest economic consequences? 
+```
+```{r}
+ggplot(data=tidy_top_10, aes(x = evtype, y = value, fill=damage)) + 
+    ggtitle("Top 10 Storm Related Economic Costs\n Period 1950 - Nov 2011") +
     geom_bar(position="dodge", stat="identity") + 
     coord_flip() + 
-    scale_fill_grey() + 
-    theme_bw() +
-    theme(axis.title.y=element_blank())
-
-
+    theme(axis.title.y=element_blank()) +
+    ylab("Costs in $1,000,000") +
+    scale_fill_manual(values=c("grey70", "grey85", "black"),
+                        name = "damage",
+                        breaks = c("propdmg", "cropdmg", "totaldmg"),
+                        labels = c("property", "crop", "total")) 
 
 ```
-## Results
